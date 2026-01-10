@@ -42,7 +42,6 @@ void snake_spawn(snake_t *s, const world_t *w) {
       int x = i % w->w;
       int y = i / w->w;
 
-      // telo dozadu doľava (aby to bolo vnútri)
       s->body[0] = (pos_t){x, y};
       s->body[1] = (pos_t){x - 1, y};
       s->body[2] = (pos_t){x - 2, y};
@@ -52,7 +51,6 @@ void snake_spawn(snake_t *s, const world_t *w) {
     }
   }
 
-  // fallback
   s->len = 1;
   s->body[0] = (pos_t){1, 1};
   s->dir = DIR_RIGHT;
@@ -60,26 +58,25 @@ void snake_spawn(snake_t *s, const world_t *w) {
 }
 
 void snake_set_dir(snake_t *s, dir_t d) {
-  // zakáž otočenie o 180° (klasické hadík pravidlo)
   if (!is_opposite(s->dir, d)) s->dir = d;
 }
 
 static void render_snake_into_world(const snake_t *s, world_t *w) {
-  // vymaž staré snake znaky (len 'o' a '@')
+  // vymaz stare snake znaky (len 'o' a '@')
   int size = (int)w->w * (int)w->h;
   for (int i = 0; i < size; i++) {
     if (w->cells[i] == SNAKE || w->cells[i] == HEAD) w->cells[i] = EMPTY;
   }
 
-  // vykresli nové
+  // vykresli nove
   for (int i = s->len - 1; i >= 0; i--) {
     int x = s->body[i].x, y = s->body[i].y;
     w->cells[idx(w, x, y)] = (i == 0) ? HEAD : SNAKE;
   }
 }
 
-int snake_step(snake_t *s, world_t *w, uint32_t *score) {
-  // vypočítaj novú hlavu
+int snake_step(snake_t *s, world_t *w, uint32_t *score, int world_type) {
+  // vypocitaj novu hlavu
   int nx = s->body[0].x;
   int ny = s->body[0].y;
 
@@ -88,7 +85,7 @@ int snake_step(snake_t *s, world_t *w, uint32_t *score) {
   else if (s->dir == DIR_LEFT) nx--;
   else if (s->dir == DIR_RIGHT) nx++;
 
-  if (world_type == WORLD_PRAZDNY) {
+  if (world_type == 1) {
     if (nx < 0) nx = w->w - 1;
     if (nx >= (int)w->w) nx = 0;
     if (ny < 0) ny = w->h - 1;
@@ -101,30 +98,29 @@ int snake_step(snake_t *s, world_t *w, uint32_t *score) {
 
   char cell = w->cells[idx(w, nx, ny)];
 
-  // kolízia
+  // stret so stenou
   if (cell == WALL || cell == SNAKE) return -1;
 
   // ovocie
   if (cell == FRUIT) {
     (*score)++;
     s->grow += 1;
-    // nové ovocie dáme až po pohybe
   }
 
-  // posuň telo: od konca k 1
+  // posuvam telo
   if (s->len < s->capacity && s->grow > 0) {
-    // rast: predĺžime len o 1
+    // rastie telo o 
     for (int i = s->len; i > 0; i--) s->body[i] = s->body[i - 1];
-    s->len++;
-    s->grow--;
+      s->len++;
+      s->grow--;
   } else {
-    // nerastie: posúvame a posledný odpadne
+    // nerastie telo
     for (int i = s->len - 1; i > 0; i--) s->body[i] = s->body[i - 1];
   }
 
   s->body[0] = (pos_t){nx, ny};
 
-  // keď zjedol ovocie, polož nové
+  // ked zjem dam nove
   if (cell == FRUIT) {
     world_place_fruit(w);
   }

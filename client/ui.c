@@ -63,7 +63,11 @@ void ui_draw_world(uint16_t w, uint16_t h, const char *grid,
   for (uint16_t y = 0; y < h; y++) {
     move(start_y + (int)y, 0);
     for (uint16_t x = 0; x < w; x++) {
-      addch(grid[y * w + x]);
+      if (y == 0 || y == h - 1 || x == 0 || x == w - 1) {
+        addch('#');
+      } else {
+        addch(grid[y * w + x]);
+      }
     }
   }
   refresh();

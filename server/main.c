@@ -28,24 +28,6 @@ static void sleep_ms(long ms) {
   nanosleep(&ts, NULL);
 }
 
-static void build_grid(char *grid, uint32_t tick) {
-  for (int i = 0; i < W * H; i++) grid[i] = ' ';
-
-  // ramik
-  for (int x = 0; x < W; x++) {
-    grid[0 * W + x] = '#';
-    grid[(H - 1) * W + x] = '#';
-  }
-  for (int y = 0; y < H; y++) {
-    grid[y * W + 0] = '#';
-    grid[y * W + (W - 1)] = '#';
-  }
-
-  int x = 1 + (int)(tick % (W - 2));
-  int y = 1 + (int)((tick / (W - 2)) % (H - 2));
-  grid[y * W + x] = '@';
-}
-
 static int set_nonblocking(int fd) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags < 0) return -1;
@@ -71,8 +53,6 @@ int main(int argc, char **argv) {
   if (W < 10) W = 10;
   if (H < 10) H = 10;
   if (time_sec < 0) time_sec = 0;
-
-  const char *game_id = argv[1];
 
   char sock_path[108];
   if (util_snprintf(sock_path, sizeof(sock_path), "/tmp/snake_%s.sock", game_id) != 0) {
@@ -120,7 +100,7 @@ int main(int argc, char **argv) {
 
     unsigned seed = (unsigned)getpid();
 
-    if (world_type == WORLD_OBSTACLES) {
+    if (world_type == 2) {
       do {
         world_generate_obstacles(&world, 0.05f, seed++);
       } while (!world_is_connected_bfs(&world));
@@ -143,13 +123,16 @@ int main(int argc, char **argv) {
     }
     snake_spawn(&snake, &world);
 
-
+  uint64_t game_start_ms = util_now_ms();
   // Tick loop: každých 100 ms pošli STATE
 while (running) {
 
     uint64_t now = util_now_ms();
+    uint32_t game_limit_ms = (mode == MODE_CAS) ? (uint32_t)time_sec * 1000u : 0;
+    uint32_t time_left_ms = 0;
 
- //    1) SPRACOVANIE INPUTU (non-blocking, korektné)
+
+  // spracovanie inputu
   for (;;) {
     msg_hdr_t ih;
     int hr = recv_hdr(client.fd, &ih);
@@ -161,33 +144,28 @@ while (running) {
     }
 
     if (hr < 0) {
-      // nič nečaká → pokračujeme v ticke
+      // nic sa nedeje, pokracujeme
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         break;
       }
-      //perror("server recv_hdr");
       running = 0;
       break;
     }
-
-    // máme header, dočítame payload
     if (ih.type == MSG_INPUT && ih.size == sizeof(msg_input_t)) {
       msg_input_t in;
       if (read_full(client.fd, &in, sizeof(in)) <= 0) {
         running = 0;
         break;
       }
-
       if (in.quit) {
         running = 0;
         break;
       }
-
       if (in.pause_toggle) {
         if (!paused) {
           paused = 1;
         } else {
-          // odpauzovanie: spusti 3s odpočet
+          // odpauznutie sputi 3 sekund odpocet
           paused = 0;
           resume_countdown = 3;
         }
@@ -195,10 +173,8 @@ while (running) {
       //pohyb hada
       if (in.has_dir) {
         snake_set_dir(&snake, (dir_t)in.dir);
-    }
-    }
-    else {
-      // preskoč neznámy payload
+      }
+    } else {
       char tmp[256];
       uint32_t left = ih.size;
       while (left > 0) {
@@ -211,9 +187,22 @@ while (running) {
       }
     }
   }
+  if (mode == MODE_CAS) {
+        uint64_t elapsed = now - game_start_ms;
+        if (elapsed >= game_limit_ms) {
+            const char *msg = "Time up!";
+            send_msg(client.fd, MSG_TEXT, msg, (uint32_t)strlen(msg) + 1);
+            running = 0;
+            break;
+        } else {
+            time_left_ms = (uint32_t)(game_limit_ms - elapsed);
+        }
+    } else {
+        time_left_ms = 0;
+    }
   // pohyb hada
     if (paused) {
-      // nič – had stojí
+      // nis  had stoji a caka
     } else if (resume_countdown > 0) {
       if (last_countdown_ms == 0)
             last_countdown_ms = now;
@@ -223,33 +212,39 @@ while (running) {
             last_countdown_ms = now;
         }
     } else {
+      // game over, skoncenie hry
       if (snake_step(&snake, &world, &score, world_type) != 0) {
-        const char *msg = "Game over!";
-        send_msg(client.fd, MSG_TEXT, msg, (uint32_t)strlen(msg) + 1);
+        char buf[64];
+        snprintf(buf, sizeof(buf),
+           "Score: %u, Time: %us",
+           score, (unsigned)((now - game_start_ms) / 1000));
+
+        send_msg(client.fd, MSG_TEXT, "Game over!", (uint32_t)strlen("Game over!") + 1);
+        send_msg(client.fd, MSG_TEXT, buf, (uint32_t)strlen(buf) + 1);
+
         running = 0;
         break;
       }
     }
 
-  //   2) POSTAV GRID (MVP)
+  // sprav mriezku
 
   char grid[W * H];
   memcpy(grid, world.cells, (size_t)(W * H));
 
 
-   //  3) POŠLI MSG_STATE
+   // posiela spravy
 
   msg_state_hdr_t sh;
   sh.w = W;
   sh.h = H;
   sh.tick = tick;
   sh.score = score;
-  sh.time_left_ms = 0;
+  sh.time_left_ms = time_left_ms;
   sh.paused = (uint8_t)paused;
   sh.resume_countdown = (uint8_t)resume_countdown;
   sh._pad = 0;
 
-  // pošli MSG_STATE ako: [msg_hdr_t(size=sizeof(sh)+grid)] [sh] [grid]
   msg_hdr_t out;
   out.type = MSG_STATE;
   out.size = (uint32_t)sizeof(sh) + (uint32_t)(W * H);
@@ -267,7 +262,7 @@ while (running) {
     break;
   }
 
-  //     4) TICK + SLEEP
+  // tick a cakanie
    tick++;
   sleep_ms(TICK_MS);
 }

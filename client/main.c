@@ -6,6 +6,7 @@
 #include <stdatomic.h>
 #include <string.h>
 #include <time.h>
+#include <ncurses.h>
 
 #include <common/unixsock.h>
 #include <common/protocol.h>
@@ -13,18 +14,14 @@
 
 #include "ui.h"
 
-/* =========================
-   Kontext klienta (zdieľaný medzi vláknami)
-   ========================= */
 typedef struct {
   int fd;
   atomic_int running;
 } client_ctx_t;
 
-/* =========================
-   Input thread – číta klávesy a posiela serveru
-   ========================= */
-static void *input_thread_fn(void *arg) {
+
+  // citanie z klavesnice
+  static void *input_thread_fn(void *arg) {
   client_ctx_t *ctx = arg;
   msg_input_t last;
   memset(&last, 0, sizeof(last));
@@ -32,7 +29,7 @@ static void *input_thread_fn(void *arg) {
   while (atomic_load(&ctx->running)) {
     msg_input_t in = ui_read_input();
 
-    // nič nestlačené → krátko spi
+    // caka ci sa stlacilo nieco
     if (!in.has_dir && !in.pause_toggle && !in.quit) {
       struct timespec ts;
       ts.tv_sec = 0;
@@ -41,7 +38,7 @@ static void *input_thread_fn(void *arg) {
       continue;
     }
 
-    // neposielaj stále ten istý smer
+    // posielanie stale toho isteho smeru
     int same_dir =
       in.has_dir && last.has_dir &&
       in.dir == last.dir &&
@@ -65,10 +62,8 @@ static void *input_thread_fn(void *arg) {
   return NULL;
 }
 
-/* =========================
-   Receive/render thread – prijíma dáta zo servera a kreslí
-   ========================= */
-static void *recv_thread_fn(void *arg) {
+  //  kresli a hybe
+  static void *recv_thread_fn(void *arg) {
   client_ctx_t *ctx = arg;
 
   while (atomic_load(&ctx->running)) {
@@ -100,7 +95,6 @@ static void *recv_thread_fn(void *arg) {
       uint32_t remaining = h.size - (uint32_t)sizeof(sh);
       if (remaining != grid_bytes || grid_bytes > 200000) {
         ui_show_status("Bad STATE payload.");
-        // preskoč zvyšok (ak nejaký)
         char tmp[256];
         uint32_t left = remaining;
         while (left > 0) {
@@ -111,7 +105,6 @@ static void *recv_thread_fn(void *arg) {
         continue;
       }
 
-      // grid buffer (stack OK pre malé rozmery)
       char *grid = malloc(grid_bytes);
       if (!grid) {
         ui_show_status("malloc failed for grid");
@@ -129,7 +122,6 @@ static void *recv_thread_fn(void *arg) {
       free(grid);
     }
     else {
-      // preskoč neznámy payload
       char tmp[256];
       uint32_t left = h.size;
       while (left > 0) {
@@ -145,58 +137,135 @@ static void *recv_thread_fn(void *arg) {
 
   return NULL;
 }
+typedef struct {
+  int w, h;
+  int mode;      // 1=standard, 2=cas
+  int world;     // 1=prazdny, 2=prekazky
+  int time_sec;  // 0 pre standard
+} menu_choice_t;
 
-/* =========================
-   Spustenie servera (fork + exec)
-   ========================= */
-static int spawn_server(const char *game_id) {
+static int menu_choose_int(const char *title, const char *a, const char *b, const char *c) {
+  clear();
+  mvprintw(0, 0, "%s", title);
+  mvprintw(2, 0, "1) %s", a);
+  mvprintw(3, 0, "2) %s", b);
+  if (c) mvprintw(4, 0, "3) %s", c);
+  mvprintw(6, 0, "zadaj 1/2%s", c ? "/3" : "");
+  refresh();
+
+  for (;;) {
+    int ch = getch();
+    if (ch == '1') return 1;
+    if (ch == '2') return 2;
+    if (c && ch == '3') return 3;
+  }
+}
+
+static menu_choice_t menu_new_game(void) {
+  menu_choice_t m;
+  memset(&m, 0, sizeof(m));
+
+  int wsel = menu_choose_int(
+      "Vyber svet (Prekazky/prazdny)",
+      "1 == pradny = ked prides ku kraju mapy objavis sa na druhej strane",
+      "2 == Prekazky = ked narazis koniec hry",
+      NULL);
+  m.world = (wsel == 2) ? 2 : 1;
+
+  int msel = menu_choose_int(
+      "Vyber mod: ",
+      "Standard",
+      "Cas",
+      NULL);
+  m.mode = (msel == 2) ? 2 : 1;
+
+  int rsel = menu_choose_int(
+      "Vyber velkost hracieho gridu",
+      "20 x 15",
+      "30 x 20",
+      "40 x 25");
+  if (rsel == 1) { m.w = 20; m.h = 15; }
+  else if (rsel == 2) { m.w = 30; m.h = 20; }
+  else { m.w = 40; m.h = 25; }
+
+  if (m.mode == 2) {
+    int tsel = menu_choose_int(
+        "Vyber dlzku hry",
+        "30 sec",
+        "60 sec",
+        "120 sec");
+    if (tsel == 1) m.time_sec = 30;
+    else if (tsel == 2) m.time_sec = 60;
+    else m.time_sec = 120;
+  } else {
+    m.time_sec = 0;
+  }
+
+  return m;
+}
+
+
+  // spustenie servera fork + exec
+static int spawn_server(const char *game_id, const menu_choice_t *m) {
   pid_t pid = fork();
   if (pid < 0) {
-    perror("client: fork");
     return -1;
   }
   if (pid == 0) {
-    execl("./server", "./server", game_id, (char *)NULL);
-    perror("client: exec server");
+    char w_str[16], h_str[16], mode_str[16], world_str[16], time_str[16];
+    snprintf(w_str, sizeof(w_str), "%d", m->w);
+    snprintf(h_str, sizeof(h_str), "%d", m->h);
+    snprintf(mode_str, sizeof(mode_str), "%d", m->mode);
+    snprintf(world_str, sizeof(world_str), "%d", m->world);
+    snprintf(time_str, sizeof(time_str), "%d", m->time_sec);
+
+    execl("./server", "./server",
+          game_id, w_str, h_str, mode_str, world_str, time_str,
+          (char *)NULL);
+
     _exit(127);
   }
-  // parent NEČAKÁ (P5 – server žije samostatne)
   return 0;
 }
 
-/* =========================
-   main
-   ========================= */
+
 int main(void) {
-  /* --------- vytvor game_id --------- */
+  ui_init();
+  menu_choice_t choice = menu_new_game();
+
+  //vytvor game_id
   char game_id[64];
   unsigned int pid = (unsigned int)getpid();
   unsigned int r = util_rand_u32();
 
   if (util_snprintf(game_id, sizeof(game_id), "%u_%u", pid, r) != 0) {
-    fprintf(stderr, "client: failed to create game_id\n");
+    fprintf(stderr, "nepodarilo sa vztvorit game id\n");
     return 1;
   }
 
-  /* --------- spusti server --------- */
-  if (spawn_server(game_id) != 0)
+  // spusti server
+  if (spawn_server(game_id, &choice) != 0) {
+    ui_shutdown();
     return 1;
+  }
 
-  /* --------- socket path --------- */
+
+  // socket path
   char sock_path[108];
   if (util_snprintf(sock_path, sizeof(sock_path),
                     "/tmp/snake_%s.sock", game_id) != 0) {
-    fprintf(stderr, "client: failed to build socket path\n");
+    fprintf(stderr, "nepodarilo sa vztvorit cestu\n");
     return 1;
   }
 
-  /* --------- pripojenie na server (retry loop) --------- */
+  ui_show_status("pripojene");
+
+  // pripojenie na server
   unixsock_t s;
   unixsock_init(&s);
 
   int connected = 0;
   for (int i = 0; i < 50; i++) {
-    // každý pokus začni s čistým fd
     unixsock_close(&s);
     unixsock_init(&s);
 
@@ -212,15 +281,11 @@ int main(void) {
   }
 
   if (!connected) {
-    fprintf(stderr, "client: cannot connect to %s\n", sock_path);
+    fprintf(stderr, "nepodarilo sa pripojit %s\n", sock_path);
     return 1;
   }
 
-  /* --------- UI init --------- */
-  ui_init();
-  ui_show_status("Connected to server.");
-
-  /* --------- vlákna --------- */
+  // vlakno
   client_ctx_t ctx;
   ctx.fd = s.fd;
   atomic_init(&ctx.running, 1);
@@ -234,7 +299,7 @@ int main(void) {
   atomic_store(&ctx.running, 0);
   pthread_join(th_recv, NULL);
 
-  /* --------- cleanup --------- */
+  // cistenie
   ui_shutdown();
   unixsock_close(&s);
   return 0;

@@ -85,13 +85,18 @@ CMakeFiles/client.dir/client/main.c.o: /home/hitka1/sem/client/main.c \
   /usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h \
   /usr/lib/gcc/x86_64-linux-gnu/12/include/stdatomic.h \
   /usr/include/string.h \
-  /home/hitka1/sem/common/unixsock.h \
-  /home/hitka1/sem/common/protocol.h \
+  /usr/include/curses.h \
+  /usr/include/ncurses_dll.h \
   /usr/lib/gcc/x86_64-linux-gnu/12/include/stdint.h \
   /usr/include/stdint.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-intn.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /usr/lib/gcc/x86_64-linux-gnu/12/include/stdbool.h \
+  /usr/include/unctrl.h \
+  /usr/include/curses.h \
+  /home/hitka1/sem/common/unixsock.h \
+  /home/hitka1/sem/common/protocol.h \
   /usr/include/x86_64-linux-gnu/sys/types.h \
   /home/hitka1/sem/common/util.h \
   /home/hitka1/sem/client/ui.h
@@ -150,13 +155,15 @@ CMakeFiles/client.dir/client/ui.c.o: /home/hitka1/sem/client/ui.c \
   /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h
 
 
-/usr/lib/gcc/x86_64-linux-gnu/12/include/stdbool.h:
-
-/usr/include/curses.h:
-
 /home/hitka1/sem/client/ui.c:
 
 /usr/include/x86_64-linux-gnu/sys/types.h:
+
+/home/hitka1/sem/common/protocol.h:
+
+/home/hitka1/sem/common/unixsock.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/12/include/stdbool.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
 
@@ -168,9 +175,7 @@ CMakeFiles/client.dir/client/ui.c.o: /home/hitka1/sem/client/ui.c \
 
 /usr/lib/gcc/x86_64-linux-gnu/12/include/stdint.h:
 
-/home/hitka1/sem/common/protocol.h:
-
-/home/hitka1/sem/common/unixsock.h:
+/usr/include/curses.h:
 
 /usr/include/x86_64-linux-gnu/bits/setjmp.h:
 
