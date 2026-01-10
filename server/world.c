@@ -52,7 +52,6 @@ void world_generate_obstacles(world_t *w, float density, unsigned seed) {
     }
   }
 
-  // poistka: aspoň jedno voľné pole (keby density bola vysoká)
   w->cells[idx(w, 1, 1)] = EMPTY;
 }
 
@@ -62,7 +61,6 @@ int world_is_connected_bfs(const world_t *w) {
   unsigned char *vis = (unsigned char*)calloc((size_t)size, 1);
   if (!q || !vis) { free(q); free(vis); return 0; }
 
-  // nájdi štart (prvé voľné)
   int start = -1;
   for (int i = 0; i < size; i++) {
     if (w->cells[i] == EMPTY) { start = i; break; }
@@ -91,7 +89,6 @@ int world_is_connected_bfs(const world_t *w) {
     }
   }
 
-  // skontroluj, či všetky EMPTY boli navštívené
   int ok = 1;
   for (int i = 0; i < size; i++) {
     if (w->cells[i] == EMPTY && !vis[i]) { ok = 0; break; }
@@ -109,7 +106,6 @@ int world_place_fruit(world_t *w) {
     if (w->cells[i] == FRUIT) w->cells[i] = EMPTY;
   }
 
-  // spočítaj voľné polia
   int free_count = 0;
   for (int i = 0; i < size; i++) {
     if (w->cells[i] == EMPTY) free_count++;

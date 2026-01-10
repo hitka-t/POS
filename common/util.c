@@ -12,7 +12,6 @@ uint64_t util_now_ms(void) {
 }
 
 uint32_t util_rand_u32(void) {
-  // jednoduchý seed (na serveri aj klientovi stačí)
   static int seeded = 0;
   if (!seeded) {
     seeded = 1;
