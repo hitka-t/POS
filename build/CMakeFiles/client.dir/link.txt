@@ -1,0 +1,1 @@
+/usr/bin/cc -g CMakeFiles/client.dir/client/main.c.o CMakeFiles/client.dir/client/ui.c.o -o client  libcommon.a -lpthread -lncurses 

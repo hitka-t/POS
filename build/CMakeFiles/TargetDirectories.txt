@@ -1,0 +1,5 @@
+/home/hitka1/sem/build/CMakeFiles/common.dir
+/home/hitka1/sem/build/CMakeFiles/server.dir
+/home/hitka1/sem/build/CMakeFiles/client.dir
+/home/hitka1/sem/build/CMakeFiles/edit_cache.dir
+/home/hitka1/sem/build/CMakeFiles/rebuild_cache.dir

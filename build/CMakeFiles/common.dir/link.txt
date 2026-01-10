@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcommon.a CMakeFiles/common.dir/common/protocol.c.o CMakeFiles/common.dir/common/unixsock.c.o CMakeFiles/common.dir/common/util.c.o
+/usr/bin/ranlib libcommon.a

@@ -1,0 +1,1 @@
+/usr/bin/cc -g CMakeFiles/server.dir/server/main.c.o CMakeFiles/server.dir/server/world.c.o CMakeFiles/server.dir/server/snake.c.o -o server  libcommon.a -lpthread 
