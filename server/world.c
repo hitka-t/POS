@@ -8,7 +8,7 @@
 #define OBSTACLE 'X'
 
 static inline int idx(const world_t *w, int x, int y) { return y * w->w + x; }
-
+//inicialiyuje svet, alokuje pamat
 int world_init(world_t *w, uint16_t width, uint16_t height) {
   w->w = width; w->h = height;
   w->cells = (char*)malloc((size_t)width * (size_t)height);
@@ -16,16 +16,16 @@ int world_init(world_t *w, uint16_t width, uint16_t height) {
   memset(w->cells, EMPTY, (size_t)width * (size_t)height);
   return 0;
 }
-
+//dealokuje pamat
 void world_destroy(world_t *w) {
   free(w->cells);
   w->cells = NULL;
 }
-
+//vyplni herny svet znakom " "
 void world_clear(world_t *w, char fill) {
   memset(w->cells, fill, (size_t)w->w * (size_t)w->h);
 }
-
+//prida hranice sveta
 void world_add_border(world_t *w, char wall) {
   for (int x = 0; x < (int)w->w; x++) {
     w->cells[idx(w, x, 0)] = wall;
@@ -36,7 +36,7 @@ void world_add_border(world_t *w, char wall) {
     w->cells[idx(w, (int)w->w - 1, y)] = wall;
   }
 }
-
+// vygeneruje prekazky vo svete
 void world_generate_obstacles(world_t *w, float density, unsigned seed) {
   srand(seed);
 
@@ -54,7 +54,7 @@ void world_generate_obstacles(world_t *w, float density, unsigned seed) {
 
   w->cells[idx(w, 1, 1)] = EMPTY;
 }
-
+//skontroluje ci je svet OK vygenerovany, ci sa had vie dostat ku kazdemu policku
 int world_is_connected_bfs(const world_t *w) {
   int size = (int)w->w * (int)w->h;
   int *q = (int*)malloc((size_t)size * sizeof(int));
@@ -98,7 +98,7 @@ int world_is_connected_bfs(const world_t *w) {
   free(vis);
   return ok;
 }
-
+//polozi do sveta jedno ovocie
 int world_place_fruit(world_t *w) {
   // vymaž staré ovocie (ak by bolo)
   int size = (int)w->w * (int)w->h;

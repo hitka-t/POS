@@ -2,7 +2,7 @@
 #include <ncurses.h>
 #include <string.h>
 #include <common/protocol.h>
-
+// inicialiyuje ncurses a pripravy obrazovku na hru
 void ui_init(void) {
   initscr();
   cbreak();
@@ -17,11 +17,11 @@ void ui_init(void) {
   mvprintw(4, 0, "World: ");
   refresh();
 }
-
+//ukonci ncurses
 void ui_shutdown(void) {
   endwin();
 }
-
+//precita vstup z klavesnice a prelozi na to co ma had urobit
 msg_input_t ui_read_input(void) {
   msg_input_t in;
   memset(&in, 0, sizeof(in));
@@ -40,12 +40,12 @@ msg_input_t ui_read_input(void) {
   }
   return in;
 }
-
+//napise status servera
 void ui_show_status(const char *text) {
   mvprintw(3, 0, "Server says: %-70s", text ? text : "(null)");
   refresh();
 }
-
+// nakresli svet
 void ui_draw_world(uint16_t w, uint16_t h, const char *grid,
                    uint32_t score, uint32_t tick,
                    uint8_t paused, uint8_t resume_countdown) {

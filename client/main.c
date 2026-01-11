@@ -62,7 +62,7 @@ typedef struct {
   return NULL;
 }
 
-  //  kresli a hybe
+  //  kresli a hybe hadom
   static void *recv_thread_fn(void *arg) {
   client_ctx_t *ctx = arg;
 
@@ -143,7 +143,7 @@ typedef struct {
   int world;     // 1=prazdny, 2=prekazky
   int time_sec;  // 0 pre standard
 } menu_choice_t;
-
+//uvidne menu na vyber modu
 static int menu_choose_int(const char *title, const char *a, const char *b, const char *c) {
   clear();
   mvprintw(0, 0, "%s", title);
@@ -160,7 +160,7 @@ static int menu_choose_int(const char *title, const char *a, const char *b, cons
     if (c && ch == '3') return 3;
   }
 }
-
+// menu na vytvorenie hry
 static menu_choice_t menu_new_game(void) {
   menu_choice_t m;
   memset(&m, 0, sizeof(m));

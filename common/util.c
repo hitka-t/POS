@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
-
+// vrati aktualny cas
 uint64_t util_now_ms(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL;
 }
-
+//vygeneruje nahodne 32 bitove cislo
 uint32_t util_rand_u32(void) {
   static int seeded = 0;
   if (!seeded) {

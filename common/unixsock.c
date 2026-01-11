@@ -16,18 +16,18 @@ static int make_unix_addr(struct sockaddr_un *addr, const char *path) {
   strncpy(addr->sun_path, path, sizeof(addr->sun_path) - 1);
   return 0;
 }
-
+//inicialiyuje strukturu soketu
 void unixsock_init(unixsock_t *s) {
   s->fd = -1;
 }
-
+//zavrie soket
 void unixsock_close(unixsock_t *s) {
   if (s && s->fd >= 0) {
     close(s->fd);
     s->fd = -1;
   }
 }
-
+//vytvori serverovz UNIX a zacne pocuvat
 int unixsock_server_listen(unixsock_t *s, const char *path) {
   if (!s || !path) return -1;
 
@@ -61,7 +61,7 @@ int unixsock_server_listen(unixsock_t *s, const char *path) {
 
   return 0;
 }
-
+//prijme prichadzajuce spojenie
 int unixsock_server_accept(unixsock_t *client, const unixsock_t *server) {
   if (!client || !server || server->fd < 0) return -1;
 
@@ -72,7 +72,7 @@ int unixsock_server_accept(unixsock_t *client, const unixsock_t *server) {
   }
   return 0;
 }
-
+//pripoji sa client
 int unixsock_client_connect(unixsock_t *s, const char *path) {
   if (!s || !path) return -1;
 
